@@ -1458,11 +1458,14 @@
                         <div class="group-passengers">
                 `;
 
+                const driverInitials = getDriverInitials(group.driver.name);
+                const groupColor = clusterColors[index % clusterColors.length];
+
                 if (group.passengers.length > 0) {
                     group.passengers.forEach(p => {
                         html += `
                             <div class="group-passenger" onclick="focusParticipant(${p.id})">
-                                <div class="passenger-icon">P</div>
+                                <div class="passenger-icon" style="background: ${groupColor}; font-size: 0.7rem;">${driverInitials}</div>
                                 <div class="passenger-info">
                                     <div class="passenger-name">${p.name}</div>
                                     <div class="passenger-area">${p.area}</div>
@@ -1519,6 +1522,67 @@
         // Cluster colors for different groups
         const clusterColors = ['#e74c3c', '#9b59b6', '#3498db', '#1abc9c', '#f39c12', '#e67e22', '#2ecc71', '#34495e'];
 
+        // Get 2-letter initials from a name
+        function getDriverInitials(name) {
+            const words = name.trim().split(/\s+/);
+            if (words.length >= 2) {
+                // First letter of first word + first letter of second word
+                return (words[0][0] + words[1][0]).toUpperCase();
+            } else {
+                // First 2 letters of single word
+                return name.substring(0, 2).toUpperCase();
+            }
+        }
+
+        // Update passenger markers with driver initials
+        function updatePassengerMarkers(groups) {
+            groups.forEach((group, index) => {
+                const initials = getDriverInitials(group.driver.name);
+                const color = clusterColors[index % clusterColors.length];
+
+                group.passengers.forEach(passenger => {
+                    // Remove old marker
+                    if (markers[passenger.id]) {
+                        map.removeLayer(markers[passenger.id]);
+                    }
+
+                    // Create new marker with driver initials and group color
+                    const marker = L.marker([passenger.lat, passenger.lng], {
+                        icon: L.divIcon({
+                            className: 'custom-div-icon',
+                            html: `<div class="custom-marker passenger" style="background: ${color}; font-size: 11px;">${initials}</div>`,
+                            iconSize: [36, 36],
+                            iconAnchor: [18, 18],
+                            popupAnchor: [0, -18]
+                        })
+                    }).addTo(map);
+
+                    marker.bindPopup(`
+                        <div class="popup-title">${passenger.name}</div>
+                        <span class="popup-type passenger">Passenger (${initials} group)</span>
+                        <div class="popup-info">
+                            ${passenger.area ? `<strong>Area:</strong> ${passenger.area}<br>` : ''}
+                            ${passenger.contact ? `<strong>Contact:</strong> ${passenger.contact}<br>` : ''}
+                            <strong>Driver:</strong> ${group.driver.name}
+                        </div>
+                    `);
+
+                    markers[passenger.id] = marker;
+                });
+            });
+        }
+
+        // Reset passenger markers to default (when clearing groups)
+        function resetPassengerMarkers() {
+            const passengers = participants.filter(p => p.role === 'passenger');
+            passengers.forEach(passenger => {
+                if (markers[passenger.id]) {
+                    map.removeLayer(markers[passenger.id]);
+                }
+                addMarker(passenger);
+            });
+        }
+
         // Clear existing cluster lines
         function clearClusterLines() {
             clusterLines.forEach(line => map.removeLayer(line));
@@ -1545,6 +1609,9 @@
                     clusterLines.push(line);
                 });
             });
+
+            // Update passenger markers with driver initials
+            updatePassengerMarkers(groups);
         }
 
         // Focus on a group (zoom to show all members)
