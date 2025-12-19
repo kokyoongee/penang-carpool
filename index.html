@@ -626,6 +626,45 @@
             color: #a8d8ff;
         }
 
+        /* Help section styles */
+        .help-section {
+            padding: 5px;
+        }
+
+        .help-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .help-card h4 {
+            color: #2c3e50;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .help-card ol, .help-card ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .help-card li {
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+
+        .help-card p {
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .container {
@@ -685,6 +724,7 @@
                 <button class="tab" data-tab="groups">Groups</button>
                 <button class="tab" data-tab="add">Add</button>
                 <button class="tab" data-tab="destination">Dest</button>
+                <button class="tab" data-tab="help">Help</button>
             </div>
 
             <div class="tab-content">
@@ -790,6 +830,71 @@
 
                         <button type="submit" class="btn btn-primary">Set Destination</button>
                     </form>
+                </div>
+
+                <!-- Help/Tutorial -->
+                <div class="tab-panel" id="help-panel">
+                    <div class="help-section">
+                        <h3 style="color: #2c3e50; margin-bottom: 15px;">How to Use This App</h3>
+
+                        <div class="help-card">
+                            <h4>1. For Organizers</h4>
+                            <ol>
+                                <li><strong>Set Destination:</strong> Go to <em>Dest</em> tab, click on map, enter name, click "Set Destination"</li>
+                                <li><strong>Share URL:</strong> Send this page link to all participants</li>
+                                <li><strong>Generate Groups:</strong> Once everyone has registered, go to <em>Groups</em> tab and click "Generate Suggested Groups"</li>
+                                <li><strong>Coordinate:</strong> Use "Create WhatsApp Message" to share group details</li>
+                            </ol>
+                        </div>
+
+                        <div class="help-card">
+                            <h4>2. For Participants</h4>
+                            <ol>
+                                <li>Go to the <strong>Add</strong> tab</li>
+                                <li><strong>Click on the map</strong> at your pickup location</li>
+                                <li>Fill in your <strong>Name</strong>, <strong>Role</strong> (Driver/Passenger), <strong>Area</strong>, and <strong>Contact</strong></li>
+                                <li>If you're a driver, select available seats</li>
+                                <li>Click <strong>"Add Participant"</strong></li>
+                            </ol>
+                        </div>
+
+                        <div class="help-card">
+                            <h4>3. Map Legend</h4>
+                            <ul style="list-style: none; padding: 0;">
+                                <li><span style="display: inline-block; width: 15px; height: 15px; background: #27ae60; border-radius: 50%; margin-right: 8px;"></span> <strong>Green</strong> = Driver (number shows seats)</li>
+                                <li><span style="display: inline-block; width: 15px; height: 15px; background: #3498db; border-radius: 50%; margin-right: 8px;"></span> <strong>Blue</strong> = Passenger</li>
+                                <li><span style="display: inline-block; width: 15px; height: 15px; background: #e74c3c; border-radius: 50%; margin-right: 8px;"></span> <strong>Red (D)</strong> = Destination</li>
+                            </ul>
+                        </div>
+
+                        <div class="help-card">
+                            <h4>4. Auto-Grouping</h4>
+                            <p>The <em>Groups</em> tab automatically assigns passengers to the <strong>nearest available driver</strong> based on distance. Each group shows:</p>
+                            <ul>
+                                <li>Driver info and contact</li>
+                                <li>Assigned passengers with distance from driver</li>
+                                <li>WhatsApp message generator for coordination</li>
+                            </ul>
+                        </div>
+
+                        <div class="help-card">
+                            <h4>5. Data Sync</h4>
+                            <ul>
+                                <li><strong>Refresh:</strong> Click to pull latest data</li>
+                                <li><strong>Copy JSON:</strong> Backup all data</li>
+                                <li><strong>Import JSON:</strong> Restore from backup</li>
+                            </ul>
+                        </div>
+
+                        <div class="help-card" style="background: #e8f4f8; border-color: #bee5eb;">
+                            <h4>Tips</h4>
+                            <ul>
+                                <li>Click any participant card to zoom to their location</li>
+                                <li>Click group header to zoom to show all members</li>
+                                <li>Refresh before generating groups for latest data</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </aside>
