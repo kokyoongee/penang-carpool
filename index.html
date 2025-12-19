@@ -954,11 +954,11 @@
         let currentGroups = []; // Store current group assignments
 
         // Supabase configuration
-        const SUPABASE_URL = 'https://uyxmjkvqdhejmubakph.supabase.co';
+        const SUPABASE_URL = 'https://uyxmjkvqdhjmejubakph.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5eG1qa3ZxZGhqbWVqdWJha3BoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNDEwODYsImV4cCI6MjA4MTcxNzA4Nn0.a1AyE0l6gzUgYl4XUWmhNOx-wFXkXCGAjumn-cwTy28';
 
         // Initialize Supabase client
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let isSyncing = false;
 
         // Create custom icon
@@ -1243,7 +1243,7 @@
             isSyncing = true;
 
             try {
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('carpool_data')
                     .upsert({
                         id: 'main',
@@ -1270,7 +1270,7 @@
             let isOnline = false;
 
             try {
-                const { data: result, error } = await supabase
+                const { data: result, error } = await supabaseClient
                     .from('carpool_data')
                     .select('participants, destination')
                     .eq('id', 'main')
