@@ -1218,8 +1218,22 @@
             saveData();
         }
 
-        // Save to online storage
+        // Save to localStorage (always works)
+        function saveToLocal() {
+            localStorage.setItem('penang-carpool-data', JSON.stringify({ participants, destination }));
+        }
+
+        // Load from localStorage
+        function loadFromLocal() {
+            const data = localStorage.getItem('penang-carpool-data');
+            return data ? JSON.parse(data) : null;
+        }
+
+        // Save to online storage (with localStorage backup)
         async function saveData() {
+            // Always save locally first
+            saveToLocal();
+
             if (isSyncing) return;
             isSyncing = true;
 
@@ -1231,21 +1245,31 @@
                 });
                 showSyncStatus('Saved!', 'success');
             } catch (error) {
-                console.error('Save failed:', error);
-                showSyncStatus('Save failed', 'error');
+                console.error('Online save failed:', error);
+                showSyncStatus('Saved locally', 'info');
             }
 
             isSyncing = false;
         }
 
-        // Load from online storage
+        // Load from online storage (with localStorage fallback)
         async function loadData() {
             showSyncStatus('Loading...', 'info');
 
+            let data = null;
+            let isOnline = false;
+
             try {
                 const response = await fetch(STORAGE_URL);
-                const data = await response.json();
+                data = await response.json();
+                isOnline = true;
+            } catch (error) {
+                console.error('Online load failed:', error);
+                // Try localStorage fallback
+                data = loadFromLocal();
+            }
 
+            if (data) {
                 participants = data.participants || [];
                 destination = data.destination;
 
@@ -1264,11 +1288,10 @@
 
                 updateStats();
                 renderParticipantList();
-                showSyncStatus('Synced!', 'success');
-            } catch (error) {
-                console.error('Load failed:', error);
-                showSyncStatus('Load failed - using local', 'error');
+                showSyncStatus(isOnline ? 'Synced!' : 'Loaded locally', isOnline ? 'success' : 'info');
+            } else {
                 renderParticipantList();
+                showSyncStatus('No data found', 'info');
             }
         }
 
