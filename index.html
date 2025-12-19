@@ -764,16 +764,16 @@
             </div>
 
             <div class="tabs">
-                <button class="tab active" data-tab="list">Participants</button>
+                <button class="tab active" data-tab="add">Add</button>
                 <button class="tab" data-tab="groups">Groups</button>
-                <button class="tab" data-tab="add">Add</button>
+                <button class="tab" data-tab="list">Participants</button>
                 <button class="tab" data-tab="destination">Dest</button>
                 <button class="tab" data-tab="help">Help</button>
             </div>
 
             <div class="tab-content">
                 <!-- Participants List -->
-                <div class="tab-panel active" id="list-panel">
+                <div class="tab-panel" id="list-panel">
                     <div id="participant-list"></div>
 
                 </div>
@@ -791,7 +791,7 @@
                 </div>
 
                 <!-- Add Person Form -->
-                <div class="tab-panel" id="add-panel">
+                <div class="tab-panel active" id="add-panel">
                     <div class="click-instruction" id="click-instruction">
                         Click on the map to select location
                     </div>
@@ -875,23 +875,23 @@
                         <h3 style="color: #2c3e50; margin-bottom: 15px;">How to Use This App</h3>
 
                         <div class="help-card">
-                            <h4>1. For Organizers</h4>
-                            <ol>
-                                <li><strong>Set Destination:</strong> Go to <em>Dest</em> tab, click on map, enter name, click "Set Destination"</li>
-                                <li><strong>Share URL:</strong> Send this page link to all participants</li>
-                                <li><strong>Generate Groups:</strong> Once everyone has registered, go to <em>Groups</em> tab and click "Generate Suggested Groups"</li>
-                                <li><strong>Coordinate:</strong> Use "Create WhatsApp Message" to share group details</li>
-                            </ol>
-                        </div>
-
-                        <div class="help-card">
-                            <h4>2. For Participants</h4>
+                            <h4>1. For Participants</h4>
                             <ol>
                                 <li>Go to the <strong>Add</strong> tab</li>
                                 <li><strong>Click on the map</strong> at your pickup location</li>
                                 <li>Fill in your <strong>Name</strong>, <strong>Role</strong> (Driver/Passenger), <strong>Area</strong>, and <strong>Contact</strong></li>
                                 <li>If you're a driver, select available seats</li>
                                 <li>Click <strong>"Add Participant"</strong></li>
+                            </ol>
+                        </div>
+
+                        <div class="help-card">
+                            <h4>2. For Organizers</h4>
+                            <ol>
+                                <li><strong>Set Destination:</strong> Go to <em>Dest</em> tab, click on map, enter name, click "Set Destination"</li>
+                                <li><strong>Share URL:</strong> Send this page link to all participants</li>
+                                <li><strong>Generate Groups:</strong> Once everyone has registered, go to <em>Groups</em> tab and click "Generate Suggested Groups"</li>
+                                <li><strong>Coordinate:</strong> Use "Create WhatsApp Message" to share group details</li>
                             </ol>
                         </div>
 
@@ -971,7 +971,9 @@
         let markers = {};
         let destinationMarker = null;
         let tempMarker = null;
-        let currentTab = 'list';
+        let currentTab = 'add';
+        let clusterLines = []; // Lines connecting drivers to passengers
+        let currentGroups = []; // Store current group assignments
 
         // Online storage configuration
         const STORAGE_URL = 'https://extendsclass.com/api/json-storage/bin/eaddfdd';
@@ -1531,6 +1533,41 @@
 
             // Store groups for later use
             window.currentGroups = groups;
+            currentGroups = groups;
+
+            // Draw cluster lines on the map
+            drawClusterLines(groups);
+        }
+
+        // Cluster colors for different groups
+        const clusterColors = ['#e74c3c', '#9b59b6', '#3498db', '#1abc9c', '#f39c12', '#e67e22', '#2ecc71', '#34495e'];
+
+        // Clear existing cluster lines
+        function clearClusterLines() {
+            clusterLines.forEach(line => map.removeLayer(line));
+            clusterLines = [];
+        }
+
+        // Draw lines from drivers to their passengers
+        function drawClusterLines(groups) {
+            clearClusterLines();
+
+            groups.forEach((group, index) => {
+                const color = clusterColors[index % clusterColors.length];
+
+                group.passengers.forEach(passenger => {
+                    const line = L.polyline(
+                        [[group.driver.lat, group.driver.lng], [passenger.lat, passenger.lng]],
+                        {
+                            color: color,
+                            weight: 2,
+                            opacity: 0.6,
+                            dashArray: '5, 10'
+                        }
+                    ).addTo(map);
+                    clusterLines.push(line);
+                });
+            });
         }
 
         // Focus on a group (zoom to show all members)
