@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penang Carpooling Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 350px;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.4rem;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .stats {
+            display: flex;
+            gap: 15px;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .stat.drivers .stat-value { color: #27ae60; }
+        .stat.passengers .stat-value { color: #3498db; }
+        .stat.seats .stat-value { color: #9b59b6; }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #eee;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 0.9rem;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: #3498db;
+            border-bottom: 2px solid #3498db;
+            font-weight: 500;
+        }
+
+        .tab:hover {
+            background: #f8f9fa;
+        }
+
+        /* Tab content */
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .tab-panel {
+            display: none;
+            padding: 15px;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* Participant list */
+        .participant-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 4px solid #3498db;
+        }
+
+        .participant-card.driver {
+            border-left-color: #27ae60;
+        }
+
+        .participant-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .participant-name {
+            font-weight: 600;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .participant-badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: white;
+        }
+
+        .participant-badge.driver {
+            background: #27ae60;
+        }
+
+        .participant-badge.passenger {
+            background: #3498db;
+        }
+
+        .participant-details {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .participant-contact {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 3px;
+        }
+
+        /* Add form */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #219a52;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .capacity-group {
+            display: none;
+        }
+
+        .capacity-group.show {
+            display: block;
+        }
+
+        .help-text {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .click-instruction {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+            color: #856404;
+        }
+
+        /* Destination section */
+        .destination-section {
+            padding: 15px;
+            background: #e8f4f8;
+            border-bottom: 1px solid #bee5eb;
+        }
+
+        .destination-section h3 {
+            font-size: 0.9rem;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .destination-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .destination-marker {
+            width: 30px;
+            height: 30px;
+            background: #e74c3c;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .destination-text {
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        /* Map */
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+
+        /* Legend */
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            z-index: 1000;
+        }
+
+        .legend h4 {
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #2c3e50;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .legend-marker {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+
+        .legend-marker.driver { background: #27ae60; }
+        .legend-marker.passenger { background: #3498db; }
+        .legend-marker.destination { background: #e74c3c; }
+
+        /* Custom markers */
+        .custom-marker {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border: 3px solid white;
+        }
+
+        .custom-marker.driver { background: #27ae60; }
+        .custom-marker.passenger { background: #3498db; }
+        .custom-marker.destination {
+            background: #e74c3c;
+            width: 44px;
+            height: 44px;
+            font-size: 18px;
+        }
+
+        /* Popup */
+        .leaflet-popup-content {
+            margin: 10px 15px;
+        }
+
+        .popup-title {
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
+        .popup-type {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .popup-type.driver { background: #27ae60; }
+        .popup-type.passenger { background: #3498db; }
+
+        .popup-info {
+            font-size: 0.85rem;
+            color: #555;
+        }
+
+        /* Export section */
+        .export-section {
+            padding: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .export-section h4 {
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            flex: 1;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        /* Groups tab styles */
+        .group-card {
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .group-header {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .group-header:hover {
+            filter: brightness(1.05);
+        }
+
+        .driver-avatar {
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .driver-info {
+            flex: 1;
+        }
+
+        .driver-name {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .driver-meta {
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+
+        .seats-badge {
+            background: rgba(255,255,255,0.25);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        .group-passengers {
+            padding: 10px 15px;
+        }
+
+        .group-passenger {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            gap: 10px;
+        }
+
+        .group-passenger:last-child {
+            border-bottom: none;
+        }
+
+        .passenger-icon {
+            width: 30px;
+            height: 30px;
+            background: #3498db;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+        }
+
+        .passenger-info {
+            flex: 1;
+        }
+
+        .passenger-name {
+            font-weight: 500;
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+
+        .passenger-area {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .passenger-distance {
+            font-size: 0.75rem;
+            color: #27ae60;
+            font-weight: 500;
+        }
+
+        .empty-seat {
+            color: #bbb;
+            font-style: italic;
+            padding: 8px 0;
+            font-size: 0.85rem;
+        }
+
+        .unassigned-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px dashed #ddd;
+        }
+
+        .unassigned-title {
+            color: #e74c3c;
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .unassigned-passenger {
+            background: #fff5f5;
+            border: 1px solid #ffcccc;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .group-actions {
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-top: 1px solid #eee;
+        }
+
+        .btn-whatsapp {
+            background: #25D366;
+            color: white;
+            font-size: 0.8rem;
+            padding: 8px 12px;
+        }
+
+        .btn-whatsapp:hover {
+            background: #1da851;
+        }
+
+        .generate-btn {
+            margin-bottom: 15px;
+        }
+
+        .group-summary {
+            background: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+            color: #2e7d32;
+        }
+
+        .group-summary strong {
+            color: #1b5e20;
+        }
+
+        /* Sync status */
+        .sync-status {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        .sync-status.success {
+            background: rgba(39, 174, 96, 0.3);
+            color: #a8e6cf;
+        }
+
+        .sync-status.error {
+            background: rgba(231, 76, 60, 0.3);
+            color: #ffcccc;
+        }
+
+        .sync-status.info {
+            background: rgba(52, 152, 219, 0.3);
+            color: #a8d8ff;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: 50vh;
+                order: 2;
+            }
+
+            #map {
+                height: 50vh;
+                order: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Penang Carpooling</h1>
+                <p>Click on the map to add participants</p>
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
+                    <span id="sync-status" class="sync-status"></span>
+                    <button onclick="refreshData()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Refresh</button>
+                </div>
+            </div>
+
+            <div class="destination-section">
+                <h3>Destination</h3>
+                <div class="destination-info">
+                    <div class="destination-marker">D</div>
+                    <div class="destination-text" id="destination-text">Click "Set Destination" tab to set</div>
+                </div>
+            </div>
+
+            <div class="stats">
+                <div class="stat drivers">
+                    <div class="stat-value" id="driver-count">0</div>
+                    <div class="stat-label">Drivers</div>
+                </div>
+                <div class="stat passengers">
+                    <div class="stat-value" id="passenger-count">0</div>
+                    <div class="stat-label">Passengers</div>
+                </div>
+                <div class="stat seats">
+                    <div class="stat-value" id="seats-available">0</div>
+                    <div class="stat-label">Seats</div>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="list">Participants</button>
+                <button class="tab" data-tab="groups">Groups</button>
+                <button class="tab" data-tab="add">Add</button>
+                <button class="tab" data-tab="destination">Dest</button>
+            </div>
+
+            <div class="tab-content">
+                <!-- Participants List -->
+                <div class="tab-panel active" id="list-panel">
+                    <div id="participant-list"></div>
+
+                    <div class="export-section">
+                        <h4>Share Data</h4>
+                        <div class="btn-group">
+                            <button class="btn btn-secondary btn-small" onclick="exportData()">Copy JSON</button>
+                            <button class="btn btn-secondary btn-small" onclick="importData()">Import JSON</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Groups Panel -->
+                <div class="tab-panel" id="groups-panel">
+                    <button class="btn btn-success generate-btn" onclick="generateGroups()">
+                        Generate Suggested Groups
+                    </button>
+                    <div id="groups-container">
+                        <p style="color: #888; text-align: center; padding: 20px;">
+                            Click the button above to auto-generate carpool groups based on proximity.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Add Person Form -->
+                <div class="tab-panel" id="add-panel">
+                    <div class="click-instruction" id="click-instruction">
+                        Click on the map to select location
+                    </div>
+
+                    <form id="add-form">
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" id="name" required placeholder="Enter name">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Role</label>
+                            <div class="radio-group">
+                                <label>
+                                    <input type="radio" name="role" value="driver" id="role-driver">
+                                    Driver
+                                </label>
+                                <label>
+                                    <input type="radio" name="role" value="passenger" id="role-passenger" checked>
+                                    Passenger
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group capacity-group" id="capacity-group">
+                            <label>Available Seats (excluding driver)</label>
+                            <select id="capacity">
+                                <option value="1">1 seat</option>
+                                <option value="2">2 seats</option>
+                                <option value="3">3 seats</option>
+                                <option value="4">4 seats</option>
+                                <option value="5">5 seats</option>
+                                <option value="6">6 seats</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Area/Location Name</label>
+                            <input type="text" id="area" placeholder="e.g., Georgetown, Bayan Lepas">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Contact (Phone/WhatsApp)</label>
+                            <input type="text" id="contact" placeholder="e.g., 012-3456789">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Coordinates</label>
+                            <input type="text" id="coordinates" readonly placeholder="Click on map to set">
+                            <p class="help-text">Click anywhere on the map to set your pickup location</p>
+                        </div>
+
+                        <button type="submit" class="btn btn-success">Add Participant</button>
+                    </form>
+                </div>
+
+                <!-- Set Destination -->
+                <div class="tab-panel" id="destination-panel">
+                    <div class="click-instruction">
+                        Click on the map to set the destination
+                    </div>
+
+                    <form id="destination-form">
+                        <div class="form-group">
+                            <label>Destination Name</label>
+                            <input type="text" id="dest-name" placeholder="e.g., SPICE Arena">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Coordinates</label>
+                            <input type="text" id="dest-coordinates" readonly placeholder="Click on map to set">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Set Destination</button>
+                    </form>
+                </div>
+            </div>
+        </aside>
+
+        <div id="map"></div>
+
+        <div class="legend">
+            <h4>Legend</h4>
+            <div class="legend-item">
+                <div class="legend-marker driver"></div>
+                <span>Driver</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-marker passenger"></div>
+                <span>Passenger</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-marker destination"></div>
+                <span>Destination</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize map centered on Penang
+        const map = L.map('map').setView([5.4164, 100.3327], 12);
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Data storage
+        let participants = [];
+        let destination = null;
+        let markers = {};
+        let destinationMarker = null;
+        let tempMarker = null;
+        let currentTab = 'list';
+
+        // Online storage configuration
+        const STORAGE_URL = 'https://extendsclass.com/api/json-storage/bin/eaddfdd';
+        let isSyncing = false;
+
+        // Create custom icon
+        function createIcon(type, label = '') {
+            const colors = {
+                driver: '#27ae60',
+                passenger: '#3498db',
+                destination: '#e74c3c'
+            };
+
+            return L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div class="custom-marker ${type}">${label}</div>`,
+                iconSize: [36, 36],
+                iconAnchor: [18, 18],
+                popupAnchor: [0, -18]
+            });
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+
+                tab.classList.add('active');
+                currentTab = tab.dataset.tab;
+                document.getElementById(`${currentTab}-panel`).classList.add('active');
+
+                // Clear temp marker when switching tabs
+                if (tempMarker) {
+                    map.removeLayer(tempMarker);
+                    tempMarker = null;
+                }
+            });
+        });
+
+        // Role toggle for capacity
+        document.querySelectorAll('input[name="role"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const capacityGroup = document.getElementById('capacity-group');
+                if (e.target.value === 'driver') {
+                    capacityGroup.classList.add('show');
+                } else {
+                    capacityGroup.classList.remove('show');
+                }
+            });
+        });
+
+        // Map click handler
+        map.on('click', (e) => {
+            const { lat, lng } = e.latlng;
+
+            // Remove temp marker if exists
+            if (tempMarker) {
+                map.removeLayer(tempMarker);
+            }
+
+            if (currentTab === 'add') {
+                // Adding participant
+                document.getElementById('coordinates').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                document.getElementById('click-instruction').textContent = 'Location selected! Fill in the details below.';
+                document.getElementById('click-instruction').style.background = '#d4edda';
+                document.getElementById('click-instruction').style.borderColor = '#28a745';
+                document.getElementById('click-instruction').style.color = '#155724';
+
+                // Show temp marker
+                tempMarker = L.marker([lat, lng], {
+                    icon: createIcon('passenger', '?')
+                }).addTo(map);
+
+            } else if (currentTab === 'destination') {
+                // Setting destination
+                document.getElementById('dest-coordinates').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+                // Show temp marker
+                tempMarker = L.marker([lat, lng], {
+                    icon: createIcon('destination', 'D')
+                }).addTo(map);
+            }
+        });
+
+        // Add participant form
+        document.getElementById('add-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const coords = document.getElementById('coordinates').value;
+            if (!coords) {
+                alert('Please click on the map to select a location');
+                return;
+            }
+
+            const [lat, lng] = coords.split(',').map(c => parseFloat(c.trim()));
+            const role = document.querySelector('input[name="role"]:checked').value;
+
+            const participant = {
+                id: Date.now(),
+                name: document.getElementById('name').value,
+                role: role,
+                capacity: role === 'driver' ? parseInt(document.getElementById('capacity').value) : 0,
+                area: document.getElementById('area').value,
+                contact: document.getElementById('contact').value,
+                lat: lat,
+                lng: lng
+            };
+
+            participants.push(participant);
+            addMarker(participant);
+            updateStats();
+            renderParticipantList();
+            saveData();
+
+            // Reset form
+            e.target.reset();
+            document.getElementById('coordinates').value = '';
+            document.getElementById('click-instruction').textContent = 'Click on the map to select location';
+            document.getElementById('click-instruction').style.background = '#fff3cd';
+            document.getElementById('click-instruction').style.borderColor = '#ffc107';
+            document.getElementById('click-instruction').style.color = '#856404';
+            document.getElementById('capacity-group').classList.remove('show');
+
+            if (tempMarker) {
+                map.removeLayer(tempMarker);
+                tempMarker = null;
+            }
+
+            // Switch to list tab
+            document.querySelector('.tab[data-tab="list"]').click();
+        });
+
+        // Set destination form
+        document.getElementById('destination-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const coords = document.getElementById('dest-coordinates').value;
+            if (!coords) {
+                alert('Please click on the map to select the destination');
+                return;
+            }
+
+            const [lat, lng] = coords.split(',').map(c => parseFloat(c.trim()));
+
+            destination = {
+                name: document.getElementById('dest-name').value || 'Destination',
+                lat: lat,
+                lng: lng
+            };
+
+            // Update destination marker
+            if (destinationMarker) {
+                map.removeLayer(destinationMarker);
+            }
+
+            destinationMarker = L.marker([lat, lng], {
+                icon: createIcon('destination', 'D')
+            }).addTo(map);
+
+            destinationMarker.bindPopup(`
+                <div class="popup-title">${destination.name}</div>
+                <div class="popup-info">Destination</div>
+            `);
+
+            // Update sidebar
+            document.getElementById('destination-text').textContent = destination.name;
+
+            if (tempMarker) {
+                map.removeLayer(tempMarker);
+                tempMarker = null;
+            }
+
+            saveData();
+
+            // Switch to list tab
+            document.querySelector('.tab[data-tab="list"]').click();
+        });
+
+        // Add marker to map
+        function addMarker(participant) {
+            const label = participant.role === 'driver' ? participant.capacity : '';
+            const marker = L.marker([participant.lat, participant.lng], {
+                icon: createIcon(participant.role, label)
+            }).addTo(map);
+
+            marker.bindPopup(`
+                <div class="popup-title">${participant.name}</div>
+                <span class="popup-type ${participant.role}">${participant.role === 'driver' ? `Driver (${participant.capacity} seats)` : 'Passenger'}</span>
+                <div class="popup-info">
+                    ${participant.area ? `<strong>Area:</strong> ${participant.area}<br>` : ''}
+                    ${participant.contact ? `<strong>Contact:</strong> ${participant.contact}` : ''}
+                </div>
+            `);
+
+            markers[participant.id] = marker;
+        }
+
+        // Update statistics
+        function updateStats() {
+            const drivers = participants.filter(p => p.role === 'driver');
+            const passengers = participants.filter(p => p.role === 'passenger');
+            const totalSeats = drivers.reduce((sum, d) => sum + d.capacity, 0);
+
+            document.getElementById('driver-count').textContent = drivers.length;
+            document.getElementById('passenger-count').textContent = passengers.length;
+            document.getElementById('seats-available').textContent = totalSeats;
+        }
+
+        // Render participant list
+        function renderParticipantList() {
+            const list = document.getElementById('participant-list');
+
+            if (participants.length === 0) {
+                list.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">No participants yet. Click "Add Person" to start.</p>';
+                return;
+            }
+
+            // Sort: drivers first, then by name
+            const sorted = [...participants].sort((a, b) => {
+                if (a.role !== b.role) return a.role === 'driver' ? -1 : 1;
+                return a.name.localeCompare(b.name);
+            });
+
+            list.innerHTML = sorted.map(p => `
+                <div class="participant-card ${p.role}" onclick="focusParticipant(${p.id})">
+                    <div class="participant-name">
+                        ${p.name}
+                        <span class="participant-badge ${p.role}">
+                            ${p.role === 'driver' ? `Driver (${p.capacity} seats)` : 'Passenger'}
+                        </span>
+                        <button onclick="event.stopPropagation(); removeParticipant(${p.id})"
+                                style="margin-left: auto; background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 1.2rem;">
+                            &times;
+                        </button>
+                    </div>
+                    ${p.area ? `<div class="participant-details">${p.area}</div>` : ''}
+                    ${p.contact ? `<div class="participant-contact">${p.contact}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        // Focus on participant on map
+        function focusParticipant(id) {
+            const p = participants.find(p => p.id === id);
+            if (p && markers[id]) {
+                map.setView([p.lat, p.lng], 15);
+                markers[id].openPopup();
+            }
+        }
+
+        // Remove participant
+        function removeParticipant(id) {
+            if (!confirm('Remove this participant?')) return;
+
+            participants = participants.filter(p => p.id !== id);
+
+            if (markers[id]) {
+                map.removeLayer(markers[id]);
+                delete markers[id];
+            }
+
+            updateStats();
+            renderParticipantList();
+            saveData();
+        }
+
+        // Save to online storage
+        async function saveData() {
+            if (isSyncing) return;
+            isSyncing = true;
+
+            try {
+                await fetch(STORAGE_URL, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ participants, destination })
+                });
+                showSyncStatus('Saved!', 'success');
+            } catch (error) {
+                console.error('Save failed:', error);
+                showSyncStatus('Save failed', 'error');
+            }
+
+            isSyncing = false;
+        }
+
+        // Load from online storage
+        async function loadData() {
+            showSyncStatus('Loading...', 'info');
+
+            try {
+                const response = await fetch(STORAGE_URL);
+                const data = await response.json();
+
+                participants = data.participants || [];
+                destination = data.destination;
+
+                participants.forEach(p => addMarker(p));
+
+                if (destination) {
+                    destinationMarker = L.marker([destination.lat, destination.lng], {
+                        icon: createIcon('destination', 'D')
+                    }).addTo(map);
+
+                    destinationMarker.bindPopup(`
+                        <div class="popup-title">${destination.name}</div>
+                        <div class="popup-info">Destination</div>
+                    `);
+
+                    document.getElementById('destination-text').textContent = destination.name;
+                }
+
+                updateStats();
+                renderParticipantList();
+                showSyncStatus('Synced!', 'success');
+            } catch (error) {
+                console.error('Load failed:', error);
+                showSyncStatus('Load failed - using local', 'error');
+                renderParticipantList();
+            }
+        }
+
+        // Show sync status
+        function showSyncStatus(message, type) {
+            const statusEl = document.getElementById('sync-status');
+            if (statusEl) {
+                statusEl.textContent = message;
+                statusEl.className = 'sync-status ' + type;
+                setTimeout(() => { statusEl.textContent = ''; }, 2000);
+            }
+        }
+
+        // Refresh data from server
+        async function refreshData() {
+            // Clear existing markers
+            Object.values(markers).forEach(m => map.removeLayer(m));
+            markers = {};
+            if (destinationMarker) {
+                map.removeLayer(destinationMarker);
+                destinationMarker = null;
+            }
+
+            await loadData();
+        }
+
+        // Export data as JSON
+        function exportData() {
+            const data = JSON.stringify({ participants, destination }, null, 2);
+            navigator.clipboard.writeText(data).then(() => {
+                alert('Data copied to clipboard! Share this with others to import.');
+            });
+        }
+
+        // Import data from JSON
+        function importData() {
+            const input = prompt('Paste the JSON data here:');
+            if (!input) return;
+
+            try {
+                const data = JSON.parse(input);
+
+                // Clear existing
+                Object.values(markers).forEach(m => map.removeLayer(m));
+                markers = {};
+                if (destinationMarker) {
+                    map.removeLayer(destinationMarker);
+                }
+
+                participants = data.participants || [];
+                destination = data.destination;
+
+                participants.forEach(p => addMarker(p));
+
+                if (destination) {
+                    destinationMarker = L.marker([destination.lat, destination.lng], {
+                        icon: createIcon('destination', 'D')
+                    }).addTo(map);
+
+                    destinationMarker.bindPopup(`
+                        <div class="popup-title">${destination.name}</div>
+                        <div class="popup-info">Destination</div>
+                    `);
+
+                    document.getElementById('destination-text').textContent = destination.name;
+                }
+
+                updateStats();
+                renderParticipantList();
+                saveData();
+
+                alert(`Imported ${participants.length} participants!`);
+            } catch (e) {
+                alert('Invalid JSON data. Please check and try again.');
+            }
+        }
+
+        // Calculate distance between two points using Haversine formula
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        // Generate carpool groups based on proximity
+        function generateGroups() {
+            const drivers = participants.filter(p => p.role === 'driver');
+            const passengers = participants.filter(p => p.role === 'passenger');
+
+            if (drivers.length === 0) {
+                alert('No drivers available. Add some drivers first.');
+                return;
+            }
+
+            if (passengers.length === 0) {
+                alert('No passengers to assign. Add some passengers first.');
+                return;
+            }
+
+            // Initialize groups with drivers
+            const groups = drivers.map(driver => ({
+                driver: driver,
+                passengers: [],
+                remainingSeats: driver.capacity
+            }));
+
+            // Create a copy of passengers to assign
+            let unassignedPassengers = [...passengers];
+
+            // Assign passengers to nearest driver with available seats
+            while (unassignedPassengers.length > 0) {
+                let bestAssignment = null;
+                let shortestDistance = Infinity;
+
+                // Find the best passenger-driver match
+                for (const passenger of unassignedPassengers) {
+                    for (const group of groups) {
+                        if (group.remainingSeats > 0) {
+                            const distance = calculateDistance(
+                                passenger.lat, passenger.lng,
+                                group.driver.lat, group.driver.lng
+                            );
+                            if (distance < shortestDistance) {
+                                shortestDistance = distance;
+                                bestAssignment = { passenger, group, distance };
+                            }
+                        }
+                    }
+                }
+
+                if (bestAssignment) {
+                    bestAssignment.group.passengers.push({
+                        ...bestAssignment.passenger,
+                        distanceToDriver: bestAssignment.distance
+                    });
+                    bestAssignment.group.remainingSeats--;
+                    unassignedPassengers = unassignedPassengers.filter(
+                        p => p.id !== bestAssignment.passenger.id
+                    );
+                } else {
+                    // No more seats available
+                    break;
+                }
+            }
+
+            // Render the groups
+            renderGroups(groups, unassignedPassengers);
+        }
+
+        // Render group cards
+        function renderGroups(groups, unassigned) {
+            const container = document.getElementById('groups-container');
+
+            const totalPassengers = participants.filter(p => p.role === 'passenger').length;
+            const assignedCount = totalPassengers - unassigned.length;
+
+            let html = `
+                <div class="group-summary">
+                    <strong>${assignedCount}/${totalPassengers}</strong> passengers assigned to
+                    <strong>${groups.length}</strong> drivers
+                    ${unassigned.length > 0 ? ` | <span style="color: #c62828;">${unassigned.length} unassigned</span>` : ''}
+                </div>
+            `;
+
+            // Render each group
+            groups.forEach((group, index) => {
+                const filledSeats = group.passengers.length;
+                const totalSeats = group.driver.capacity;
+
+                html += `
+                    <div class="group-card">
+                        <div class="group-header" onclick="focusGroup(${index})">
+                            <div class="driver-avatar">${group.driver.name.charAt(0)}</div>
+                            <div class="driver-info">
+                                <div class="driver-name">${group.driver.name}</div>
+                                <div class="driver-meta">${group.driver.area} | ${group.driver.contact}</div>
+                            </div>
+                            <div class="seats-badge">${filledSeats}/${totalSeats} seats</div>
+                        </div>
+                        <div class="group-passengers">
+                `;
+
+                if (group.passengers.length > 0) {
+                    group.passengers.forEach(p => {
+                        html += `
+                            <div class="group-passenger" onclick="focusParticipant(${p.id})">
+                                <div class="passenger-icon">P</div>
+                                <div class="passenger-info">
+                                    <div class="passenger-name">${p.name}</div>
+                                    <div class="passenger-area">${p.area}</div>
+                                </div>
+                                <div class="passenger-distance">${p.distanceToDriver.toFixed(1)} km</div>
+                            </div>
+                        `;
+                    });
+                }
+
+                // Show empty seats
+                for (let i = 0; i < group.remainingSeats; i++) {
+                    html += `<div class="empty-seat">Empty seat</div>`;
+                }
+
+                html += `
+                        </div>
+                        <div class="group-actions">
+                            <button class="btn btn-whatsapp btn-small" onclick="createWhatsAppGroup(${index})">
+                                Create WhatsApp Message
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Render unassigned passengers
+            if (unassigned.length > 0) {
+                html += `
+                    <div class="unassigned-section">
+                        <div class="unassigned-title">Unassigned Passengers (${unassigned.length})</div>
+                `;
+                unassigned.forEach(p => {
+                    html += `
+                        <div class="unassigned-passenger" onclick="focusParticipant(${p.id})">
+                            <strong>${p.name}</strong> - ${p.area}<br>
+                            <span style="color: #666;">${p.contact}</span>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            container.innerHTML = html;
+
+            // Store groups for later use
+            window.currentGroups = groups;
+        }
+
+        // Focus on a group (zoom to show all members)
+        function focusGroup(groupIndex) {
+            const group = window.currentGroups[groupIndex];
+            if (!group) return;
+
+            const points = [
+                [group.driver.lat, group.driver.lng],
+                ...group.passengers.map(p => [p.lat, p.lng])
+            ];
+
+            if (points.length === 1) {
+                map.setView(points[0], 14);
+            } else {
+                const bounds = L.latLngBounds(points);
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+
+            // Open driver popup
+            if (markers[group.driver.id]) {
+                markers[group.driver.id].openPopup();
+            }
+        }
+
+        // Create WhatsApp message for a group
+        function createWhatsAppGroup(groupIndex) {
+            const group = window.currentGroups[groupIndex];
+            if (!group) return;
+
+            let message = `*Carpool Group*\n\n`;
+            message += `*Driver:* ${group.driver.name}\n`;
+            message += `*From:* ${group.driver.area}\n`;
+            message += `*Contact:* ${group.driver.contact}\n`;
+            message += `*Seats:* ${group.driver.capacity}\n\n`;
+
+            if (destination) {
+                message += `*Destination:* ${destination.name}\n\n`;
+            }
+
+            message += `*Passengers:*\n`;
+            group.passengers.forEach((p, i) => {
+                message += `${i + 1}. ${p.name} (${p.area}) - ${p.contact}\n`;
+            });
+
+            if (group.remainingSeats > 0) {
+                message += `\n_${group.remainingSeats} seat(s) still available_`;
+            }
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(message).then(() => {
+                alert('Message copied! Paste it in your WhatsApp group.');
+            });
+        }
+
+        // Initialize
+        loadData();
+    </script>
+</body>
+</html>
