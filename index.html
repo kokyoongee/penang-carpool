@@ -933,6 +933,7 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // Initialize map centered on Penang
         const map = L.map('map').setView([5.4164, 100.3327], 12);
@@ -952,8 +953,12 @@
         let clusterLines = []; // Lines connecting drivers to passengers
         let currentGroups = []; // Store current group assignments
 
-        // Online storage configuration
-        const STORAGE_URL = 'https://extendsclass.com/api/json-storage/bin/eaddfdd';
+        // Supabase configuration
+        const SUPABASE_URL = 'https://uyxmjkvqdhejmubakph.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5eG1qa3ZxZGhqbWVqdWJha3BoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNDEwODYsImV4cCI6MjA4MTcxNzA4Nn0.a1AyE0l6gzUgYl4XUWmhNOx-wFXkXCGAjumn-cwTy28';
+
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let isSyncing = false;
 
         // Create custom icon
@@ -1229,7 +1234,7 @@
             return data ? JSON.parse(data) : null;
         }
 
-        // Save to online storage (with localStorage backup)
+        // Save to Supabase (with localStorage backup)
         async function saveData() {
             // Always save locally first
             saveToLocal();
@@ -1238,11 +1243,16 @@
             isSyncing = true;
 
             try {
-                await fetch(STORAGE_URL, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ participants, destination })
-                });
+                const { error } = await supabase
+                    .from('carpool_data')
+                    .upsert({
+                        id: 'main',
+                        participants: participants,
+                        destination: destination,
+                        updated_at: new Date().toISOString()
+                    });
+
+                if (error) throw error;
                 showSyncStatus('Saved!', 'success');
             } catch (error) {
                 console.error('Online save failed:', error);
@@ -1252,7 +1262,7 @@
             isSyncing = false;
         }
 
-        // Load from online storage (with localStorage fallback)
+        // Load from Supabase (with localStorage fallback)
         async function loadData() {
             showSyncStatus('Loading...', 'info');
 
@@ -1260,8 +1270,14 @@
             let isOnline = false;
 
             try {
-                const response = await fetch(STORAGE_URL);
-                data = await response.json();
+                const { data: result, error } = await supabase
+                    .from('carpool_data')
+                    .select('participants, destination')
+                    .eq('id', 'main')
+                    .single();
+
+                if (error) throw error;
+                data = result;
                 isOnline = true;
             } catch (error) {
                 console.error('Online load failed:', error);
